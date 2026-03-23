@@ -1,0 +1,174 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Font Faces ─── */
+@font-face {
+  font-family: "Fraunces";
+  src: url("/assets/fonts/Fraunces.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("/assets/fonts/CabinetGrotesk.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "General Sans";
+  src: url("/assets/fonts/GeneralSans.woff2") format("woff2");
+  font-weight: 200 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* ─── TalentHunting.co.uk Design Tokens ─── */
+    /* Navy deep primary theme — corporate premium */
+
+    /* Background: clean warm white */
+    --background: 0.985 0.004 85;
+    /* Foreground: deep charcoal */
+    --foreground: 0.18 0.015 250;
+
+    /* Card: pure white */
+    --card: 1 0 0;
+    --card-foreground: 0.18 0.015 250;
+
+    /* Popover */
+    --popover: 1 0 0;
+    --popover-foreground: 0.18 0.015 250;
+
+    /* Primary: Deep Navy */
+    --primary: 0.22 0.055 258;
+    --primary-foreground: 0.985 0.003 85;
+
+    /* Secondary: Warm grey */
+    --secondary: 0.95 0.006 250;
+    --secondary-foreground: 0.22 0.055 258;
+
+    /* Muted */
+    --muted: 0.94 0.005 250;
+    --muted-foreground: 0.52 0.02 255;
+
+    /* Accent: Gold/Amber */
+    --accent: 0.78 0.155 65;
+    --accent-foreground: 0.18 0.015 250;
+
+    /* Destructive */
+    --destructive: 0.577 0.245 27;
+    --destructive-foreground: 0.985 0 0;
+
+    /* Border */
+    --border: 0.88 0.01 250;
+    --input: 0.88 0.01 250;
+    --ring: 0.78 0.155 65;
+
+    /* Charts */
+    --chart-1: 0.78 0.155 65;
+    --chart-2: 0.22 0.055 258;
+    --chart-3: 0.55 0.08 250;
+    --chart-4: 0.65 0.12 65;
+    --chart-5: 0.4 0.04 258;
+
+    /* Sidebar */
+    --sidebar: 0.18 0.055 258;
+    --sidebar-foreground: 0.95 0.005 85;
+    --sidebar-primary: 0.78 0.155 65;
+    --sidebar-primary-foreground: 0.18 0.015 250;
+    --sidebar-accent: 0.26 0.06 258;
+    --sidebar-accent-foreground: 0.95 0.005 85;
+    --sidebar-border: 0.3 0.05 258;
+    --sidebar-ring: 0.78 0.155 65;
+
+    /* Custom tokens */
+    --navy: 0.22 0.055 258;
+    --navy-dark: 0.15 0.045 258;
+    --navy-deeper: 0.12 0.04 258;
+    --gold: 0.78 0.155 65;
+    --gold-light: 0.86 0.12 70;
+    --gold-dark: 0.65 0.13 60;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+  }
+}
+
+@layer utilities {
+  .text-navy {
+    color: oklch(var(--navy));
+  }
+  .bg-navy {
+    background-color: oklch(var(--navy));
+  }
+  .bg-navy-dark {
+    background-color: oklch(var(--navy-dark));
+  }
+  .bg-navy-deeper {
+    background-color: oklch(var(--navy-deeper));
+  }
+  .text-gold {
+    color: oklch(var(--gold));
+  }
+  .bg-gold {
+    background-color: oklch(var(--gold));
+  }
+  .border-gold {
+    border-color: oklch(var(--gold));
+  }
+  .border-navy {
+    border-color: oklch(var(--navy));
+  }
+  .gradient-hero {
+    background: linear-gradient(
+      135deg,
+      oklch(0.12 0.04 258) 0%,
+      oklch(0.18 0.055 258) 50%,
+      oklch(0.22 0.05 262) 100%
+    );
+  }
+  .gradient-gold {
+    background: linear-gradient(
+      135deg,
+      oklch(0.78 0.155 65) 0%,
+      oklch(0.72 0.14 58) 100%
+    );
+  }
+  .noise-overlay {
+    position: relative;
+  }
+  .noise-overlay::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
+  }
+}

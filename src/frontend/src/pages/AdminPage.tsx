@@ -113,7 +113,7 @@ function PortalUsersTab() {
     data: portalUsers,
     isLoading: usersLoading,
     refetch: refetchUsers,
-  } = useListPortalUsers();
+  } = useListPortalUsers(true);
   const addPortalUser = useAddPortalUser();
   const changePassword = useChangePortalUserPassword();
 
@@ -505,7 +505,7 @@ function EmailWhitelistTab() {
     data: whitelist,
     isLoading: whitelistLoading,
     refetch: refetchWhitelist,
-  } = useEmailWhitelist();
+  } = useEmailWhitelist(true);
   const addEmail = useAddEmailToWhitelist();
   const removeEmail = useRemoveEmailFromWhitelist();
 
@@ -915,12 +915,12 @@ export function AdminPage() {
     data: jobPostings,
     isLoading: jobsLoading,
     refetch: refetchJobs,
-  } = useAllJobPostings();
+  } = useAllJobPostings(isAdmin === true);
   const {
     data: candidates,
     isLoading: candidatesLoading,
     refetch: refetchCandidates,
-  } = useAllCandidateProfiles();
+  } = useAllCandidateProfiles(isAdmin === true);
 
   const isLoggingIn = loginStatus === "logging-in";
 

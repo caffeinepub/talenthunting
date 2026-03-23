@@ -38,13 +38,18 @@ export function useIsCallerAdmin() {
     queryKey: ["isCallerAdmin"],
     queryFn: async () => {
       if (!actor) return false;
-      return actor.isCallerAdmin();
+      try {
+        return await actor.isCallerAdmin();
+      } catch {
+        return false;
+      }
     },
     enabled: !!actor && !isFetching,
+    retry: false,
   });
 }
 
-export function useAllJobPostings() {
+export function useAllJobPostings(isAdmin = false) {
   const { actor, isFetching } = useActor();
   return useQuery<JobPosting[]>({
     queryKey: ["allJobPostings"],
@@ -52,11 +57,12 @@ export function useAllJobPostings() {
       if (!actor) return [];
       return actor.getAllJobPostings();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !isFetching && isAdmin,
+    retry: false,
   });
 }
 
-export function useAllCandidateProfiles() {
+export function useAllCandidateProfiles(isAdmin = false) {
   const { actor, isFetching } = useActor();
   return useQuery<CandidateProfile[]>({
     queryKey: ["allCandidateProfiles"],
@@ -64,7 +70,8 @@ export function useAllCandidateProfiles() {
       if (!actor) return [];
       return actor.getAllCandidateProfiles();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !isFetching && isAdmin,
+    retry: false,
   });
 }
 
@@ -97,15 +104,18 @@ export function useSubmitJobPosting() {
   });
 }
 
-export function useListPortalUsers() {
+type PortalUserSummary = { portalRole: PortalRole; username: string };
+
+export function useListPortalUsers(isAdmin = false) {
   const { actor, isFetching } = useActor();
-  return useQuery<Array<{ portalRole: PortalRole; username: string }>>({
+  return useQuery<PortalUserSummary[]>({
     queryKey: ["portalUsers"],
     queryFn: async () => {
       if (!actor) return [];
       return actor.listPortalUsers();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !isFetching && isAdmin,
+    retry: false,
   });
 }
 
@@ -173,7 +183,7 @@ export function useRegisterCandidateProfile() {
   });
 }
 
-export function useEmailWhitelist() {
+export function useEmailWhitelist(isAdmin = false) {
   const { actor, isFetching } = useActor();
   return useQuery<WhitelistEntry[]>({
     queryKey: ["emailWhitelist"],
@@ -181,7 +191,8 @@ export function useEmailWhitelist() {
       if (!actor) return [];
       return actor.listEmailWhitelist();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !isFetching && isAdmin,
+    retry: false,
   });
 }
 
@@ -223,7 +234,8 @@ export function useClaimAdminAccess() {
       return (actor as any)._initializeAccessControlWithSecret(adminToken);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["isCallerAdmin"] });
+      // Invalidate all queries so admin status is freshly re-checked
+      queryClient.invalidateQueries();
     },
   });
 }

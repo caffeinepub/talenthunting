@@ -26,13 +26,15 @@ export function useActor() {
       };
 
       const actor = await createActorWithConfig(actorOptions);
-      const adminToken = getSecretParameter("caffeineAdminToken") || "";
-      await actor._initializeAccessControlWithSecret(adminToken);
+      // Only initialize with secret if a real token is present in the URL
+      const adminToken = getSecretParameter("caffeineAdminToken");
+      if (adminToken) {
+        await actor._initializeAccessControlWithSecret(adminToken);
+      }
       return actor;
     },
     // Only refetch when identity changes
     staleTime: Number.POSITIVE_INFINITY,
-    // This will cause the actor to be recreated when the identity changes
     enabled: true,
   });
 

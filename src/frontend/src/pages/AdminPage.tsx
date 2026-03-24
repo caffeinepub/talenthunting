@@ -766,10 +766,14 @@ function ClaimAdminPage({
     try {
       await claimAdmin.mutateAsync(token.trim());
       setSuccess(true);
-      setTimeout(() => window.location.reload(), 1500);
-    } catch {
+      // Give React Query a moment to propagate the refetched admin status, then reload
+      setTimeout(() => window.location.reload(), 800);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
       setError(
-        "Invalid token or admin access already assigned. Make sure you entered the correct CAFFEINE_ADMIN_TOKEN.",
+        message.includes("admin status not granted")
+          ? message
+          : "Invalid token. Please double-check your CAFFEINE_ADMIN_TOKEN and try again.",
       );
     }
   };

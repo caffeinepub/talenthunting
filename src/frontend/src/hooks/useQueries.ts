@@ -223,7 +223,6 @@ export function useRemoveEmailFromWhitelist() {
     },
   });
 }
-
 export function useClaimAdminAccess() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
@@ -231,11 +230,19 @@ export function useClaimAdminAccess() {
     mutationFn: async (adminToken: string) => {
       if (!actor) throw new Error("Not connected");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (actor as any)._initializeAccessControlWithSecret(adminToken);
+      await (actor as any)._initializeAccessControlWithSecret(adminToken);
+      // Immediately re-check admin status to confirm the token worked
+      const isAdmin: boolean = await (actor as any).isCallerAdmin();
+      if (!isAdmin) {
+        throw new Error(
+          "Token accepted but admin status not granted. Please verify your CAFFEINE_ADMIN_TOKEN.",
+        );
+      }
     },
-    onSuccess: () => {
-      // Invalidate all queries so admin status is freshly re-checked
-      queryClient.invalidateQueries();
+    onSuccess: async () => {
+      // Invalidate ALL queries and explicitly refetch admin status
+      await queryClient.invalidateQueries();
+      await queryClient.refetchQueries({ queryKey: ["isCallerAdmin"] });
     },
   });
 }

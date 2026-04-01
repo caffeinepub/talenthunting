@@ -1,4 +1,5 @@
 import { PortalRole } from "@/backend.d";
+import { VideoConsultationsCard } from "@/components/VideoCallModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -114,12 +115,28 @@ export function EmployerDashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background pt-20 pb-16">
-      {/* Hero header */}
-      <div className="bg-navy py-12 lg:py-16 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 border border-gold/10 rounded-full translate-x-1/3 -translate-y-1/3 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-56 h-56 bg-gold/5 rounded-full -translate-x-1/4 translate-y-1/4 pointer-events-none" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+    <main
+      className="min-h-screen pb-16"
+      style={{ background: "oklch(0.985 0.004 85)" }}
+    >
+      {/* Hero header — glassmorphism + gradient mesh */}
+      <div className="relative pt-20 pb-0 overflow-hidden">
+        {/* Gradient mesh */}
+        <div
+          className="absolute inset-0"
+          style={{ background: "oklch(0.15 0.045 258)" }}
+        />
+        <div
+          className="absolute top-0 right-1/3 w-72 h-72 rounded-full blur-3xl pointer-events-none"
+          style={{ background: "oklch(0.78 0.155 65 / 0.12)" }}
+        />
+        <div
+          className="absolute bottom-0 left-1/4 w-56 h-56 rounded-full blur-3xl pointer-events-none"
+          style={{ background: "oklch(0.22 0.055 258 / 0.4)" }}
+        />
+        <div className="absolute top-1/2 left-0 w-80 h-80 border border-gold/10 rounded-full -translate-x-1/3 -translate-y-1/2 pointer-events-none" />
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -145,37 +162,44 @@ export function EmployerDashboardPage() {
               data-ocid="employer.logout_button"
               onClick={handleLogout}
               variant="outline"
-              className="border-white/20 text-white hover:bg-white/10 hover:text-white font-heading font-semibold shrink-0 self-start sm:self-auto"
+              className="border-white/20 text-white hover:bg-white/10 hover:text-white font-heading font-semibold shrink-0 self-start sm:self-auto transition-all duration-200"
             >
               <LogOut size={15} className="mr-2" />
               Log Out
             </Button>
           </motion.div>
         </div>
+
+        {/* Glassmorphism stats bar */}
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-0">
+          <div className="backdrop-blur-md bg-white/10 border border-white/10 rounded-t-2xl px-6 py-4 flex items-center gap-8">
+            <div className="flex items-center gap-3">
+              <Users size={18} className="text-gold" />
+              <div>
+                <p className="font-body text-xs text-white/50">
+                  Active Candidates
+                </p>
+                <p className="font-heading font-bold text-white text-lg leading-none">
+                  {countLoading ? (
+                    <Skeleton className="h-5 w-8 inline-block bg-white/20" />
+                  ) : (
+                    (candidateCount?.toString() ?? "—")
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="w-px bg-white/15 h-8" />
+            <p className="font-body text-sm text-white/50">
+              Screened candidates ready for your consideration
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Stats bar */}
-      <div className="border-b bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-8">
-          <div className="flex items-center gap-3">
-            <Users size={18} className="text-navy" />
-            <div>
-              <p className="font-body text-xs text-muted-foreground">
-                Active Candidates
-              </p>
-              <p className="font-heading font-bold text-navy text-lg leading-none">
-                {countLoading ? (
-                  <Skeleton className="h-5 w-8 inline-block" />
-                ) : (
-                  (candidateCount?.toString() ?? "—")
-                )}
-              </p>
-            </div>
-          </div>
-          <div className="w-px bg-border h-8" />
-          <p className="font-body text-sm text-muted-foreground">
-            Screened candidates ready for your consideration
-          </p>
+      {/* White content area */}
+      <div className="bg-white border-b border-border/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-px" />
         </div>
       </div>
 
@@ -202,7 +226,7 @@ export function EmployerDashboardPage() {
                     transition={{ delay: 0.15 + i * 0.06 }}
                     data-ocid={`employer.item.${i + 1}`}
                   >
-                    <Card className="border-border/60 hover:border-navy/25 hover:shadow-sm transition-all duration-200">
+                    <Card className="border-border/60 hover:border-navy/25 hover:shadow-sm transition-all duration-300 rounded-2xl">
                       <CardContent className="p-5 flex items-start gap-4">
                         <div className="w-10 h-10 rounded-xl bg-navy flex items-center justify-center flex-shrink-0">
                           <span className="font-display font-bold text-gold text-sm">
@@ -252,7 +276,7 @@ export function EmployerDashboardPage() {
                   <Link
                     to="/post-role"
                     data-ocid="employer.primary_button"
-                    className="inline-flex items-center gap-2 bg-gold hover:bg-gold/90 text-navy-deeper font-heading font-bold text-sm py-2.5 px-5 rounded-lg transition-colors shadow-md"
+                    className="inline-flex items-center gap-2 bg-gold hover:bg-gold/90 text-navy-deeper font-heading font-bold text-sm py-2.5 px-5 rounded-lg transition-all duration-200 hover:scale-[1.02] shadow-md"
                   >
                     Post a Role Now
                     <ArrowRight size={14} />
@@ -269,8 +293,11 @@ export function EmployerDashboardPage() {
             transition={{ delay: 0.2 }}
             className="space-y-5"
           >
+            {/* Video Consultations Card */}
+            <VideoConsultationsCard username={username} />
+
             {/* Candidate pool card */}
-            <Card className="border-border/60 overflow-hidden">
+            <Card className="border-border/60 overflow-hidden rounded-2xl shadow-card hover:shadow-card-hover transition-all duration-300">
               <div className="h-1.5 bg-gradient-to-r from-gold to-navy" />
               <CardHeader className="pb-3 pt-5 px-5">
                 <CardTitle className="font-heading text-navy text-base">
@@ -329,7 +356,7 @@ export function EmployerDashboardPage() {
             </Card>
 
             {/* Account info */}
-            <Card className="border-border/60">
+            <Card className="border-border/60 rounded-2xl">
               <CardContent className="p-5">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-9 h-9 rounded-xl bg-navy/8 flex items-center justify-center flex-shrink-0">
@@ -349,7 +376,7 @@ export function EmployerDashboardPage() {
                   variant="outline"
                   size="sm"
                   onClick={handleLogout}
-                  className="w-full font-heading text-xs border-border/60 text-muted-foreground hover:text-destructive hover:border-destructive/30"
+                  className="w-full font-heading text-xs border-border/60 text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-all duration-200"
                 >
                   <LogOut size={13} className="mr-1.5" />
                   Sign Out

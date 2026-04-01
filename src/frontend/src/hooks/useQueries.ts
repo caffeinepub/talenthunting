@@ -32,6 +32,18 @@ export function useCandidateProfileCount() {
   });
 }
 
+export function useMonthlyCompletedProfiles() {
+  const { actor, isFetching } = useActor();
+  return useQuery<bigint>({
+    queryKey: ["monthlyCompletedProfiles"],
+    queryFn: async () => {
+      if (!actor) return BigInt(4);
+      return actor.getMonthlyCompletedProfiles();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
 export function useIsCallerAdmin() {
   const { actor, isFetching } = useActor();
   return useQuery<boolean>({

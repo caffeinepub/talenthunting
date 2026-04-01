@@ -17,8 +17,29 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
-export const CandidateId = IDL.Nat;
+export const VideoCallId = IDL.Nat;
+export const IVideoCallStatus = IDL.Variant({
+  'cancelled' : IDL.Null,
+  'pending' : IDL.Null,
+  'completed' : IDL.Null,
+  'confirmed' : IDL.Null,
+});
 export const Timestamp = IDL.Int;
+export const IVideoCall = IDL.Record({
+  'status' : IVideoCallStatus,
+  'invitedUser' : IDL.Text,
+  'createdAt' : Timestamp,
+  'durationMinutes' : IDL.Nat,
+  'notes' : IDL.Text,
+  'callId' : VideoCallId,
+  'scheduledAt' : Timestamp,
+  'scheduledBy' : IDL.Text,
+});
+export const UserProfile = IDL.Record({
+  'name' : IDL.Text,
+  'email' : IDL.Text,
+});
+export const CandidateId = IDL.Nat;
 export const RoleType = IDL.Variant({
   'contract' : IDL.Null,
   'partTime' : IDL.Null,
@@ -45,10 +66,6 @@ export const JobPosting = IDL.Record({
   'requiredSkills' : IDL.Vec(IDL.Text),
   'postingId' : JobPostingId,
 });
-export const UserProfile = IDL.Record({
-  'name' : IDL.Text,
-  'email' : IDL.Text,
-});
 export const SessionToken = IDL.Text;
 export const WhitelistEntry = IDL.Record({
   'note' : IDL.Text,
@@ -61,7 +78,11 @@ export const idlService = IDL.Service({
   'addEmailToWhitelist' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'addPortalUser' : IDL.Func([IDL.Text, IDL.Text, PortalRole], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'cancelVideoCall' : IDL.Func([VideoCallId], [], []),
   'changePortalUserPassword' : IDL.Func([IDL.Text, IDL.Text], [], []),
+  'confirmVideoCall' : IDL.Func([VideoCallId], [], []),
+  'findCallsForUser' : IDL.Func([IDL.Text], [IDL.Vec(IVideoCall)], ['query']),
+  'findUserByEmail' : IDL.Func([IDL.Text], [IDL.Opt(UserProfile)], ['query']),
   'getAllCandidateProfiles' : IDL.Func(
       [],
       [IDL.Vec(CandidateProfile)],
@@ -72,6 +93,7 @@ export const idlService = IDL.Service({
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getCandidateProfileCount' : IDL.Func([], [IDL.Nat], ['query']),
   'getJobPostingCount' : IDL.Func([], [IDL.Nat], ['query']),
+  'getMonthlyCompletedProfiles' : IDL.Func([], [IDL.Nat], ['query']),
   'getPortalSession' : IDL.Func(
       [SessionToken],
       [
@@ -86,6 +108,13 @@ export const idlService = IDL.Service({
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
+  'getVideoCallDetails' : IDL.Func(
+      [VideoCallId],
+      [IDL.Opt(IVideoCall)],
+      ['query'],
+    ),
+  'getVideoCallsCount' : IDL.Func([], [IDL.Nat], ['query']),
+  'incrementMonthlyCompletedProfiles' : IDL.Func([], [], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'isEmailWhitelisted' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
   'listEmailWhitelist' : IDL.Func([], [IDL.Vec(WhitelistEntry)], []),
@@ -107,6 +136,11 @@ export const idlService = IDL.Service({
     ),
   'removeEmailFromWhitelist' : IDL.Func([IDL.Text], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'scheduleVideoCall' : IDL.Func(
+      [IDL.Text, Timestamp, IDL.Nat, IDL.Text],
+      [VideoCallId],
+      [],
+    ),
   'submitJobPosting' : IDL.Func(
       [IDL.Text, IDL.Text, RoleType, IDL.Vec(IDL.Text), IDL.Text, IDL.Text],
       [JobPostingId],
@@ -126,8 +160,26 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
-  const CandidateId = IDL.Nat;
+  const VideoCallId = IDL.Nat;
+  const IVideoCallStatus = IDL.Variant({
+    'cancelled' : IDL.Null,
+    'pending' : IDL.Null,
+    'completed' : IDL.Null,
+    'confirmed' : IDL.Null,
+  });
   const Timestamp = IDL.Int;
+  const IVideoCall = IDL.Record({
+    'status' : IVideoCallStatus,
+    'invitedUser' : IDL.Text,
+    'createdAt' : Timestamp,
+    'durationMinutes' : IDL.Nat,
+    'notes' : IDL.Text,
+    'callId' : VideoCallId,
+    'scheduledAt' : Timestamp,
+    'scheduledBy' : IDL.Text,
+  });
+  const UserProfile = IDL.Record({ 'name' : IDL.Text, 'email' : IDL.Text });
+  const CandidateId = IDL.Nat;
   const RoleType = IDL.Variant({
     'contract' : IDL.Null,
     'partTime' : IDL.Null,
@@ -154,7 +206,6 @@ export const idlFactory = ({ IDL }) => {
     'requiredSkills' : IDL.Vec(IDL.Text),
     'postingId' : JobPostingId,
   });
-  const UserProfile = IDL.Record({ 'name' : IDL.Text, 'email' : IDL.Text });
   const SessionToken = IDL.Text;
   const WhitelistEntry = IDL.Record({
     'note' : IDL.Text,
@@ -167,7 +218,11 @@ export const idlFactory = ({ IDL }) => {
     'addEmailToWhitelist' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'addPortalUser' : IDL.Func([IDL.Text, IDL.Text, PortalRole], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'cancelVideoCall' : IDL.Func([VideoCallId], [], []),
     'changePortalUserPassword' : IDL.Func([IDL.Text, IDL.Text], [], []),
+    'confirmVideoCall' : IDL.Func([VideoCallId], [], []),
+    'findCallsForUser' : IDL.Func([IDL.Text], [IDL.Vec(IVideoCall)], ['query']),
+    'findUserByEmail' : IDL.Func([IDL.Text], [IDL.Opt(UserProfile)], ['query']),
     'getAllCandidateProfiles' : IDL.Func(
         [],
         [IDL.Vec(CandidateProfile)],
@@ -178,6 +233,7 @@ export const idlFactory = ({ IDL }) => {
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getCandidateProfileCount' : IDL.Func([], [IDL.Nat], ['query']),
     'getJobPostingCount' : IDL.Func([], [IDL.Nat], ['query']),
+    'getMonthlyCompletedProfiles' : IDL.Func([], [IDL.Nat], ['query']),
     'getPortalSession' : IDL.Func(
         [SessionToken],
         [
@@ -192,6 +248,13 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
+    'getVideoCallDetails' : IDL.Func(
+        [VideoCallId],
+        [IDL.Opt(IVideoCall)],
+        ['query'],
+      ),
+    'getVideoCallsCount' : IDL.Func([], [IDL.Nat], ['query']),
+    'incrementMonthlyCompletedProfiles' : IDL.Func([], [], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'isEmailWhitelisted' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
     'listEmailWhitelist' : IDL.Func([], [IDL.Vec(WhitelistEntry)], []),
@@ -213,6 +276,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     'removeEmailFromWhitelist' : IDL.Func([IDL.Text], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'scheduleVideoCall' : IDL.Func(
+        [IDL.Text, Timestamp, IDL.Nat, IDL.Text],
+        [VideoCallId],
+        [],
+      ),
     'submitJobPosting' : IDL.Func(
         [IDL.Text, IDL.Text, RoleType, IDL.Vec(IDL.Text), IDL.Text, IDL.Text],
         [JobPostingId],

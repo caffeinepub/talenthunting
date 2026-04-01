@@ -21,20 +21,16 @@ module {
     };
   };
 
-  // If the token matches, ALWAYS promote caller to admin (regardless of whether admin was previously assigned).
-  // This allows the real token holder to reclaim admin access even if it was accidentally assigned to the wrong identity.
-  // If the token does NOT match, register caller as a plain user only if not yet registered.
+  // First principal that calls this function becomes admin, all other principals become users.
   public func initialize(state : AccessControlState, caller : Principal, adminToken : Text, userProvidedToken : Text) {
     if (caller.isAnonymous()) { return };
-    if (userProvidedToken == adminToken) {
-      // Correct token -- always promote to admin
-      state.userRoles.add(caller, #admin);
-      state.adminAssigned := true;
-    } else {
-      // Wrong token -- register as user only if not yet registered
-      switch (state.userRoles.get(caller)) {
-        case (?_) {}; // already registered, do not downgrade
-        case (null) {
+    switch (state.userRoles.get(caller)) {
+      case (?_) {};
+      case (null) {
+        if (not state.adminAssigned and userProvidedToken == adminToken) {
+          state.userRoles.add(caller, #admin);
+          state.adminAssigned := true;
+        } else {
           state.userRoles.add(caller, #user);
         };
       };

@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   useCandidateProfileCount,
   useJobPostingCount,
+  useMonthlyCompletedProfiles,
 } from "@/hooks/useQueries";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -10,6 +11,7 @@ import {
   Award,
   Briefcase,
   Building2,
+  CalendarCheck,
   CheckCircle,
   FileText,
   Globe,
@@ -20,7 +22,8 @@ import {
   UserCheck,
   Users,
 } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, useInView } from "motion/react";
+import { useEffect, useRef, useState } from "react";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 32 },
@@ -32,21 +35,57 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.12 } },
 };
 
+/* ── Animated counter hook ── */
+function useCountUp(target: number, duration = 1800) {
+  const [count, setCount] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
+
+  useEffect(() => {
+    if (!inView) return;
+    let start: number | null = null;
+    const step = (ts: number) => {
+      if (!start) start = ts;
+      const progress = Math.min((ts - start) / duration, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      setCount(Math.floor(eased * target));
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [inView, target, duration]);
+
+  return { count, ref };
+}
+
 function StatCard({
   value,
+  numericValue,
   label,
   icon: Icon,
-}: { value: string; label: string; icon: React.ElementType }) {
+  suffix = "",
+}: {
+  value: string;
+  numericValue?: number;
+  label: string;
+  icon: React.ElementType;
+  suffix?: string;
+}) {
+  const { count, ref } = useCountUp(numericValue ?? 0);
+  const displayValue = numericValue != null ? `${count}${suffix}` : value;
+
   return (
     <motion.div
       variants={fadeUp}
-      className="flex flex-col items-center p-8 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 hover:border-gold/30 transition-colors"
+      className="flex flex-col items-center p-8 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 hover:border-gold/30 transition-all duration-300 hover:-translate-y-1 group"
     >
-      <div className="p-3 bg-gold/10 rounded-lg mb-4">
+      <div className="p-3 bg-gold/10 rounded-xl mb-4 group-hover:bg-gold/20 transition-colors duration-300">
         <Icon size={28} className="text-gold" />
       </div>
-      <span className="font-display text-4xl lg:text-5xl font-bold text-white mb-2">
-        {value}
+      <span
+        ref={ref}
+        className="font-display text-4xl lg:text-5xl font-bold text-white mb-2"
+      >
+        {displayValue}
       </span>
       <span className="font-heading text-sm text-white/60 text-center uppercase tracking-wider">
         {label}
@@ -133,34 +172,82 @@ const testimonials = [
   },
 ];
 
+const ORB_CONFIG = [
+  {
+    size: 320,
+    top: "10%",
+    left: "70%",
+    duration: 7,
+    delay: 0,
+    color: "oklch(0.22 0.055 258 / 0.15)",
+  },
+  {
+    size: 200,
+    top: "60%",
+    left: "85%",
+    duration: 9,
+    delay: 1.5,
+    color: "oklch(0.78 0.155 65 / 0.08)",
+  },
+  {
+    size: 260,
+    top: "30%",
+    left: "5%",
+    duration: 6,
+    delay: 0.8,
+    color: "oklch(0.22 0.055 258 / 0.12)",
+  },
+  {
+    size: 140,
+    top: "75%",
+    left: "20%",
+    duration: 8,
+    delay: 2,
+    color: "oklch(0.78 0.155 65 / 0.06)",
+  },
+];
+
 export function HomePage() {
   const navigate = useNavigate();
   const { data: jobCount } = useJobPostingCount();
   const { data: candidateCount } = useCandidateProfileCount();
+  const { data: monthlyProfiles } = useMonthlyCompletedProfiles();
 
   const stats = [
     {
       value: jobCount ? `${Number(jobCount)}+` : "500+",
+      numericValue: jobCount ? Number(jobCount) : 500,
+      suffix: "+",
       label: "Active Job Postings",
       icon: Briefcase,
     },
     {
       value: candidateCount ? `${Number(candidateCount)}+` : "2,400+",
+      numericValue: candidateCount ? Number(candidateCount) : 2400,
+      suffix: "+",
       label: "Registered Candidates",
       icon: Users,
     },
     {
       value: "50+",
+      numericValue: 50,
+      suffix: "+",
       label: "UK & Global Reach",
       icon: Globe,
+    },
+    {
+      value: monthlyProfiles ? `${Number(monthlyProfiles)}` : "4",
+      numericValue: monthlyProfiles ? Number(monthlyProfiles) : 4,
+      suffix: "",
+      label: "Profiles Completed This Month",
+      icon: CalendarCheck,
     },
   ];
 
   return (
     <main>
       {/* ─── Hero ─── */}
-      <section className="relative min-h-[90vh] flex items-center overflow-hidden">
-        {/* Background image */}
+      <section className="relative min-h-screen flex items-center overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
@@ -168,9 +255,31 @@ export function HomePage() {
               "url('/assets/generated/hero-banner.dim_1400x600.jpg')",
           }}
         />
-        {/* Overlay */}
-        <div className="absolute inset-0 gradient-hero opacity-90" />
-        {/* Geometric decoration */}
+        <div className="absolute inset-0 gradient-hero opacity-92" />
+
+        {/* Floating animated orbs */}
+        {ORB_CONFIG.map((orb) => (
+          <motion.div
+            key={orb.color}
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              width: orb.size,
+              height: orb.size,
+              top: orb.top,
+              left: orb.left,
+              background: `radial-gradient(circle, ${orb.color}, transparent 70%)`,
+              transform: "translate(-50%, -50%)",
+            }}
+            animate={{ y: [-20, 20, -20] }}
+            transition={{
+              duration: orb.duration,
+              delay: orb.delay,
+              repeat: Number.POSITIVE_INFINITY,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+
         <div className="absolute top-20 right-0 w-64 h-64 border border-gold/10 rounded-full translate-x-1/2" />
         <div className="absolute bottom-20 left-0 w-96 h-96 border border-gold/5 rounded-full -translate-x-1/2" />
 
@@ -192,7 +301,21 @@ export function HomePage() {
               variants={fadeUp}
               className="font-display text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-[1.05] mb-6"
             >
-              Your Gateway to <span className="text-gold italic">Global</span>{" "}
+              Your Gateway to{" "}
+              <span
+                className="italic"
+                style={{
+                  background:
+                    "linear-gradient(90deg, oklch(0.78 0.155 65) 0%, oklch(0.86 0.12 70) 40%, oklch(0.78 0.155 65) 80%, oklch(0.86 0.12 70) 100%)",
+                  backgroundSize: "200% auto",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  animation: "shimmer 3s linear infinite",
+                }}
+              >
+                Global
+              </span>{" "}
               Remote Talent
             </motion.h1>
 
@@ -213,7 +336,7 @@ export function HomePage() {
                 data-ocid="hero.post_role_button"
                 onClick={() => navigate({ to: "/post-role" })}
                 size="lg"
-                className="bg-gold hover:bg-gold/90 text-navy-deeper font-heading font-bold text-base px-8 shadow-gold transition-all duration-200 hover:scale-[1.02]"
+                className="bg-gold hover:bg-gold/90 text-navy-deeper font-heading font-bold text-base px-8 shadow-gold transition-all duration-300 hover:scale-[1.03] hover:shadow-lg"
               >
                 Post a Role
                 <ArrowRight size={16} className="ml-2" />
@@ -223,13 +346,12 @@ export function HomePage() {
                 onClick={() => navigate({ to: "/find-talent" })}
                 size="lg"
                 variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 hover:border-white/50 font-heading font-bold text-base px-8 bg-transparent transition-all duration-200"
+                className="border-white/30 text-white hover:bg-white/10 hover:border-white/50 font-heading font-bold text-base px-8 bg-transparent transition-all duration-300"
               >
                 Register as Talent
               </Button>
             </motion.div>
 
-            {/* London address badge */}
             <motion.div
               variants={fadeUp}
               className="flex items-center gap-4 mt-6 flex-wrap"
@@ -247,7 +369,6 @@ export function HomePage() {
           </motion.div>
         </div>
 
-        {/* Bottom fade */}
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
       </section>
 
@@ -291,12 +412,13 @@ export function HomePage() {
           >
             {services.map((service) => (
               <motion.div key={service.title} variants={fadeUp}>
-                <Card className="h-full border-border/60 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 group">
+                <Card className="h-full border-border/60 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1.5 group backdrop-blur-sm bg-white/80 border-white/50 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-gold to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <CardContent className="p-7">
-                    <div className="w-12 h-12 bg-navy/5 group-hover:bg-navy/10 rounded-xl flex items-center justify-center mb-5 transition-colors">
+                    <div className="w-12 h-12 bg-navy/5 group-hover:bg-navy/10 rounded-2xl flex items-center justify-center mb-5 transition-colors duration-300">
                       <service.icon size={24} className="text-navy" />
                     </div>
-                    <h3 className="font-heading font-bold text-navy text-base mb-3 group-hover:text-gold transition-colors">
+                    <h3 className="font-heading font-bold text-navy text-base mb-3 group-hover:text-gold transition-colors duration-300">
                       {service.title}
                     </h3>
                     <p className="font-body text-sm text-muted-foreground leading-relaxed">
@@ -396,7 +518,6 @@ export function HomePage() {
             viewport={{ once: true, margin: "-80px" }}
             className="grid grid-cols-1 md:grid-cols-3 gap-8 relative"
           >
-            {/* Connector line */}
             <div className="hidden md:block absolute top-10 left-1/4 right-1/4 h-px bg-gradient-to-r from-gold/30 via-gold/60 to-gold/30" />
 
             {steps.map((step, i) => (
@@ -438,7 +559,7 @@ export function HomePage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-80px" }}
-            className="grid grid-cols-1 sm:grid-cols-3 gap-6"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
           >
             {stats.map((stat) => (
               <StatCard key={stat.label} {...stat} />
@@ -480,7 +601,7 @@ export function HomePage() {
           >
             {testimonials.map((t) => (
               <motion.div key={t.name} variants={fadeUp}>
-                <Card className="h-full border-border/50 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1">
+                <Card className="h-full border-border/50 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 rounded-2xl">
                   <CardContent className="p-8">
                     <div className="flex gap-1 mb-5">
                       {(["s1", "s2", "s3", "s4", "s5"] as const).map((s) => (
@@ -554,7 +675,7 @@ export function HomePage() {
               <Button
                 onClick={() => navigate({ to: "/post-role" })}
                 size="lg"
-                className="bg-gold hover:bg-gold/90 text-navy-deeper font-heading font-bold text-base px-10 shadow-gold transition-all duration-200 hover:scale-[1.02]"
+                className="bg-gold hover:bg-gold/90 text-navy-deeper font-heading font-bold text-base px-10 shadow-gold transition-all duration-300 hover:scale-[1.02]"
               >
                 Post a Role
                 <ArrowRight size={16} className="ml-2" />
@@ -563,7 +684,7 @@ export function HomePage() {
                 onClick={() => navigate({ to: "/find-talent" })}
                 size="lg"
                 variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 hover:border-white/50 font-heading font-bold text-base px-10 bg-transparent"
+                className="border-white/30 text-white hover:bg-white/10 hover:border-white/50 font-heading font-bold text-base px-10 bg-transparent transition-all duration-300"
               >
                 Find Talent
               </Button>

@@ -21,6 +21,20 @@ export interface CandidateProfile {
   'cvLink' : string,
   'skills' : Array<string>,
 }
+export interface IVideoCall {
+  'status' : IVideoCallStatus,
+  'invitedUser' : string,
+  'createdAt' : Timestamp,
+  'durationMinutes' : bigint,
+  'notes' : string,
+  'callId' : VideoCallId,
+  'scheduledAt' : Timestamp,
+  'scheduledBy' : string,
+}
+export type IVideoCallStatus = { 'cancelled' : null } |
+  { 'pending' : null } |
+  { 'completed' : null } |
+  { 'confirmed' : null };
 export interface JobPosting {
   'roleType' : RoleType,
   'jobDescription' : string,
@@ -43,6 +57,7 @@ export interface UserProfile { 'name' : string, 'email' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export type VideoCallId = bigint;
 export interface WhitelistEntry {
   'note' : string,
   'email' : string,
@@ -53,18 +68,26 @@ export interface _SERVICE {
   'addEmailToWhitelist' : ActorMethod<[string, string], undefined>,
   'addPortalUser' : ActorMethod<[string, string, PortalRole], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'cancelVideoCall' : ActorMethod<[VideoCallId], undefined>,
   'changePortalUserPassword' : ActorMethod<[string, string], undefined>,
+  'confirmVideoCall' : ActorMethod<[VideoCallId], undefined>,
+  'findCallsForUser' : ActorMethod<[string], Array<IVideoCall>>,
+  'findUserByEmail' : ActorMethod<[string], [] | [UserProfile]>,
   'getAllCandidateProfiles' : ActorMethod<[], Array<CandidateProfile>>,
   'getAllJobPostings' : ActorMethod<[], Array<JobPosting>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCandidateProfileCount' : ActorMethod<[], bigint>,
   'getJobPostingCount' : ActorMethod<[], bigint>,
+  'getMonthlyCompletedProfiles' : ActorMethod<[], bigint>,
   'getPortalSession' : ActorMethod<
     [SessionToken],
     [] | [{ 'portalRole' : PortalRole, 'username' : string }]
   >,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'getVideoCallDetails' : ActorMethod<[VideoCallId], [] | [IVideoCall]>,
+  'getVideoCallsCount' : ActorMethod<[], bigint>,
+  'incrementMonthlyCompletedProfiles' : ActorMethod<[], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isEmailWhitelisted' : ActorMethod<[string], boolean>,
   'listEmailWhitelist' : ActorMethod<[], Array<WhitelistEntry>>,
@@ -80,6 +103,10 @@ export interface _SERVICE {
   >,
   'removeEmailFromWhitelist' : ActorMethod<[string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'scheduleVideoCall' : ActorMethod<
+    [string, Timestamp, bigint, string],
+    VideoCallId
+  >,
   'submitJobPosting' : ActorMethod<
     [string, string, RoleType, Array<string>, string, string],
     JobPostingId

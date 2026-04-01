@@ -16,6 +16,7 @@ actor {
   type CandidateId = Nat;
   type Timestamp = Int;
   type SessionToken = Text;
+  type VideoCallId = Nat;
 
   type RoleType = {
     #fullTime;
@@ -52,7 +53,7 @@ actor {
 
   public type UserProfile = {
     name : Text;
-    email : Text;
+    email : Text; // This should be unique to each user
   };
 
   public type PortalUser = {
@@ -73,6 +74,24 @@ actor {
     addedAt : Timestamp;
   };
 
+  public type IVideoCallStatus = {
+    #pending;
+    #confirmed;
+    #completed;
+    #cancelled;
+  };
+
+  public type IVideoCall = {
+    callId : VideoCallId;
+    scheduledBy : Text; // username of job seeker or employer
+    invitedUser : Text; // Username of the invited job seeker/employer
+    scheduledAt : Timestamp;
+    durationMinutes : Nat;
+    status : IVideoCallStatus;
+    notes : Text;
+    createdAt : Timestamp;
+  };
+
   module JobPosting {
     public func compare(posting1 : JobPosting, posting2 : JobPosting) : Order.Order {
       Nat.compare(posting1.postingId, posting2.postingId);
@@ -85,11 +104,18 @@ actor {
     };
   };
 
+  module IVideoCall {
+    public func compare(call1 : IVideoCall, call2 : IVideoCall) : Order.Order {
+      Nat.compare(call1.callId, call2.callId);
+    };
+  };
+
   let postings = Map.empty<JobPostingId, JobPosting>();
   let candidates = Map.empty<CandidateId, CandidateProfile>();
   let portalUsers = Map.empty<Text, PortalUser>();
   let portalSessions = Map.empty<Text, PortalSession>();
   let userProfiles = Map.empty<Principal, UserProfile>();
+  let videoCalls = Map.empty<VideoCallId, IVideoCall>();
   let emailWhitelist = Map.fromIter<Text, WhitelistEntry>(
     [(
       "vinayk1907@gmail.com",
@@ -104,6 +130,8 @@ actor {
   var nextPostingId = 0;
   var nextSessionId = 0;
   var nextCandidateId = 0;
+  var nextVideoCallId = 0;
+  var monthlyCompletedProfiles = 4;
 
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -135,6 +163,7 @@ actor {
   };
 
   public query ({ caller }) func isEmailWhitelisted(email : Text) : async Bool {
+    // Public query - no authorization needed
     emailWhitelist.containsKey(email);
   };
 
@@ -155,6 +184,7 @@ actor {
   };
 
   public shared ({ caller }) func loginPortalUser(username : Text, passwordHash : Text) : async SessionToken {
+    // Public function - no authorization needed for login
     let user = switch (portalUsers.get(username)) {
       case (?u) { u };
       case (null) { Runtime.trap("Invalid credentials") };
@@ -174,6 +204,7 @@ actor {
   };
 
   public shared ({ caller }) func logoutPortalUser(token : SessionToken) : async () {
+    // Public function - anyone can logout a session
     portalSessions.remove(token);
   };
 
@@ -181,6 +212,7 @@ actor {
     username : Text;
     portalRole : PortalRole;
   } {
+    // Public query - needed for session validation
     portalSessions.get(token);
   };
 
@@ -223,6 +255,165 @@ actor {
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
     enforceUserAccess(caller);
     userProfiles.add(caller, profile);
+  };
+
+  public query ({ caller }) func findUserByEmail(email : Text) : async ?UserProfile {
+    enforceUserAccess(caller);
+    let userArray = userProfiles.toArray();
+    let found = userArray.find(
+      func((_p, u)) { u.email == email }
+    );
+    switch (found) {
+      case (?(p, fp)) { ?fp };
+      case (null) { null };
+    };
+  };
+
+  //
+  // Video Call Methods
+  //
+  public shared ({ caller }) func scheduleVideoCall(
+    invitedUserEmail : Text,
+    scheduledAt : Timestamp,
+    durationMinutes : Nat,
+    notes : Text,
+  ) : async VideoCallId {
+    enforceUserAccess(caller);
+
+    // Get caller's username from their profile
+    let callerProfile = switch (userProfiles.get(caller)) {
+      case (?profile) { profile };
+      case (null) { Runtime.trap("Caller must have a user profile") };
+    };
+
+    // Verify invited user exists
+    let invitedProfile = switch (findUserByEmailInternal(invitedUserEmail)) {
+      case (?profile) { profile };
+      case (null) { Runtime.trap("Invited user not found") };
+    };
+
+    let videoCall : IVideoCall = {
+      callId = nextVideoCallId;
+      scheduledBy = callerProfile.email;
+      invitedUser = invitedUserEmail;
+      scheduledAt;
+      durationMinutes;
+      status = #pending;
+      notes;
+      createdAt = Time.now();
+    };
+
+    videoCalls.add(nextVideoCallId, videoCall);
+    nextVideoCallId += 1;
+    videoCall.callId;
+  };
+
+  public shared ({ caller }) func confirmVideoCall(callId : VideoCallId) : async () {
+    enforceUserAccess(caller);
+
+    let callerProfile = switch (userProfiles.get(caller)) {
+      case (?profile) { profile };
+      case (null) { Runtime.trap("Caller must have a user profile") };
+    };
+
+    let videoCall = switch (videoCalls.get(callId)) {
+      case (?call) { call };
+      case (null) { Runtime.trap("Video call not found") };
+    };
+
+    // Only the invited user can confirm
+    if (videoCall.invitedUser != callerProfile.email) {
+      Runtime.trap("Unauthorized: Only the invited user can confirm the call");
+    };
+
+    if (videoCall.status != #pending) {
+      Runtime.trap("Can only confirm pending calls");
+    };
+
+    let updatedCall = {
+      videoCall with
+      status = #confirmed;
+    };
+
+    videoCalls.add(callId, updatedCall);
+  };
+
+  public shared ({ caller }) func cancelVideoCall(callId : VideoCallId) : async () {
+    enforceUserAccess(caller);
+
+    let callerProfile = switch (userProfiles.get(caller)) {
+      case (?profile) { profile };
+      case (null) { Runtime.trap("Caller must have a user profile") };
+    };
+
+    let videoCall = switch (videoCalls.get(callId)) {
+      case (?call) { call };
+      case (null) { Runtime.trap("Video call not found") };
+    };
+
+    // Either participant can cancel
+    if (videoCall.scheduledBy != callerProfile.email and videoCall.invitedUser != callerProfile.email) {
+      Runtime.trap("Unauthorized: Only call participants can cancel");
+    };
+
+    if (videoCall.status == #completed or videoCall.status == #cancelled) {
+      Runtime.trap("Cannot cancel completed or already cancelled calls");
+    };
+
+    let updatedCall = {
+      videoCall with
+      status = #cancelled;
+    };
+
+    videoCalls.add(callId, updatedCall);
+  };
+
+  public query ({ caller }) func getVideoCallDetails(callId : VideoCallId) : async ?IVideoCall {
+    enforceUserAccess(caller);
+
+    let callerProfile = switch (userProfiles.get(caller)) {
+      case (?profile) { profile };
+      case (null) { Runtime.trap("Caller must have a user profile") };
+    };
+
+    let videoCall = switch (videoCalls.get(callId)) {
+      case (?call) { call };
+      case (null) { return null };
+    };
+
+    // Only participants or admins can view call details
+    if (videoCall.scheduledBy != callerProfile.email and
+        videoCall.invitedUser != callerProfile.email and
+        not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only call participants can view details");
+    };
+
+    ?videoCall;
+  };
+
+  public query ({ caller }) func findCallsForUser(userEmail : Text) : async [IVideoCall] {
+    enforceUserAccess(caller);
+
+    let callerProfile = switch (userProfiles.get(caller)) {
+      case (?profile) { profile };
+      case (null) { Runtime.trap("Caller must have a user profile") };
+    };
+
+    // Users can only view their own calls unless they're admin
+    if (userEmail != callerProfile.email and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Can only view your own calls");
+    };
+
+    let calls = videoCalls.values().toArray().filter(
+      func(c) { c.invitedUser == userEmail or c.scheduledBy == userEmail }
+    );
+
+    calls.sort();
+  };
+
+  public query ({ caller }) func getVideoCallsCount() : async Nat {
+    // Public query - anyone can see the count
+    videoCalls.size();
   };
 
   //
@@ -293,11 +484,23 @@ actor {
   // Count Getters
   //
   public query ({ caller }) func getJobPostingCount() : async Nat {
+    enforceUserAccess(caller);
     postings.size();
   };
 
   public query ({ caller }) func getCandidateProfileCount() : async Nat {
+    enforceUserAccess(caller);
     candidates.size();
+  };
+
+  public query ({ caller }) func getMonthlyCompletedProfiles() : async Nat {
+    // Public query - anyone can see this metric
+    monthlyCompletedProfiles;
+  };
+
+  public shared ({ caller }) func incrementMonthlyCompletedProfiles() : async () {
+    enforceUserAccess(caller);
+    monthlyCompletedProfiles += 1;
   };
 
   //
@@ -314,5 +517,15 @@ actor {
       Runtime.trap("Unauthorized: Only admins can perform this action");
     };
   };
-};
 
+  func findUserByEmailInternal(email : Text) : ?UserProfile {
+    let userArray = userProfiles.toArray();
+    let found = userArray.find(
+      func((_p, u)) { u.email == email }
+    );
+    switch (found) {
+      case (?(p, fp)) { ?fp };
+      case (null) { null };
+    };
+  };
+};
